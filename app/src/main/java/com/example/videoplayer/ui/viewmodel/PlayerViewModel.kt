@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 
 class PlayerViewModel(application: Application) : AndroidViewModel(application) {
@@ -69,6 +70,18 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                 }
             }
         }
+    }
+
+    fun stop() {
+        progressJob?.cancel()
+        if (currentVideoId > 0 && player.contentDuration > 0) {
+            runBlocking {
+                repository.savePlayHistory(currentVideoId, player.currentPosition)
+            }
+        }
+        player.pause()
+        player.clearMediaItems()
+        currentVideoId = -1
     }
 
     override fun onCleared() {

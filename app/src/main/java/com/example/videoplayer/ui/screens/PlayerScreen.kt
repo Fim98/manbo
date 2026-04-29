@@ -20,18 +20,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Forward10
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay10
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
@@ -47,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -77,33 +75,21 @@ fun PlayerScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
 
     var controlsVisible by remember { mutableStateOf(true) }
-    var isLocked by remember { mutableStateOf(false) }
     var accumulatedSeekMs by remember { mutableFloatStateOf(0f) }
-    var isSeeking by remember { mutableStateOf(false) }
-
-    // Gesture feedback state
     var gestureFeedback by remember { mutableStateOf<GestureFeedback?>(null) }
 
     // Slider state
     var sliderPosition by remember { mutableFloatStateOf(0f) }
     var isSliderDragging by remember { mutableStateOf(false) }
 
-    // Track player position for slider
     val exoPlayer = viewModel.player
     var currentPosition by remember { mutableLongStateOf(exoPlayer.currentPosition) }
     var duration by remember { mutableLongStateOf(exoPlayer.duration.coerceAtLeast(0)) }
 
+    // Poll player position
     LaunchedEffect(exoPlayer) {
-        val listener = object : Player.Listener {
-            override fun onPositionDiscontinuity(reason: Int) {
-                currentPosition = exoPlayer.currentPosition
-                duration = exoPlayer.duration.coerceAtLeast(0)
-            }
-        }
-        exoPlayer.addListener(listener)
-        // Poll position for smooth slider
         while (true) {
-            delay(250)
+            delay(200)
             if (!isSliderDragging) {
                 currentPosition = exoPlayer.currentPosition
                 duration = exoPlayer.duration.coerceAtLeast(0)
@@ -111,28 +97,27 @@ fun PlayerScreen(
         }
     }
 
-    // Update slider from position (when not dragging)
     if (!isSliderDragging && duration > 0) {
         sliderPosition = (currentPosition.toFloat() / duration).coerceIn(0f, 1f)
     }
 
-    // Auto-hide controls after 3 seconds
+    // Auto-hide after 4 seconds
     LaunchedEffect(controlsVisible, isSliderDragging) {
         if (controlsVisible && !isSliderDragging) {
-            delay(3000)
+            delay(4000)
             controlsVisible = false
         }
     }
 
-    // Auto-dismiss gesture feedback after 1 second
+    // Auto-dismiss gesture feedback
     LaunchedEffect(gestureFeedback) {
         if (gestureFeedback != null) {
-            delay(1000)
+            delay(800)
             gestureFeedback = null
         }
     }
 
-    // Hide system bars for immersive mode
+    // Immersive mode
     DisposableEffect(Unit) {
         activity?.let { act ->
             val window = act.window
@@ -152,7 +137,7 @@ fun PlayerScreen(
         }
     }
 
-    // Pause/resume with lifecycle
+    // Lifecycle pause/resume
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
@@ -170,7 +155,6 @@ fun PlayerScreen(
     }
 
     BackHandler {
-        viewModel.saveProgress()
         onBack()
     }
 
@@ -178,18 +162,14 @@ fun PlayerScreen(
         modifier = modifier
             .fillMaxSize()
             .background(Color.Black)
-            .pointerInput(isLocked) {
+            .pointerInput(Unit) {
                 detectTapGestures {
-                    if (!isLocked) {
-                        controlsVisible = !controlsVisible
-                    }
+                    controlsVisible = !controlsVisible
                 }
             }
             .pointerInput(Unit) {
                 detectDragGestures(
-                    onDragStart = { isSeeking = true },
                     onDragEnd = {
-                        isSeeking = false
                         if (abs(accumulatedSeekMs) > 1000) {
                             viewModel.player.seekTo(
                                 (viewModel.player.currentPosition + accumulatedSeekMs.toLong())
@@ -200,7 +180,6 @@ fun PlayerScreen(
                         gestureFeedback = null
                     },
                     onDragCancel = {
-                        isSeeking = false
                         accumulatedSeekMs = 0f
                         gestureFeedback = null
                     }
@@ -209,33 +188,25 @@ fun PlayerScreen(
                     val width = size.width
                     val height = size.height
                     if (abs(dragAmount.x) > abs(dragAmount.y)) {
-                        // Horizontal: accumulate seek delta
                         accumulatedSeekMs += (dragAmount.x / width) * 120_000f
-                        val seekSeconds = (accumulatedSeekMs / 1000).toInt()
-                        gestureFeedback = GestureFeedback.Seek(seekSeconds)
+                        gestureFeedback = GestureFeedback.Seek((accumulatedSeekMs / 1000).toInt())
                     } else {
                         if (change.position.x < width / 2) {
-                            // Left vertical: brightness
                             activity?.let { act ->
                                 val window = act.window
-                                val layout = window.attributes
-                                val newBrightness = (layout.screenBrightness - dragAmount.y / height * 0.5f)
-                                    .coerceIn(0f, 1f)
-                                layout.screenBrightness = newBrightness
-                                window.attributes = layout
+                                val attrs = window.attributes
+                                val newBrightness = (attrs.screenBrightness - dragAmount.y / height * 0.5f).coerceIn(0f, 1f)
+                                attrs.screenBrightness = newBrightness
+                                window.attributes = attrs
                                 gestureFeedback = GestureFeedback.Brightness((newBrightness * 100).toInt())
                             }
                         } else {
-                            // Right vertical: volume
-                            val audioManager = context.getSystemService(android.content.Context.AUDIO_SERVICE)
-                                as android.media.AudioManager
-                            val maxVolume = audioManager.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)
-                            val currentVolume = audioManager.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)
-                            val newVolume = (currentVolume - (dragAmount.y / height * maxVolume).toInt())
-                                .coerceIn(0, maxVolume)
-                            audioManager.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, newVolume, 0)
-                            val volumePercent = if (maxVolume > 0) (newVolume * 100 / maxVolume) else 0
-                            gestureFeedback = GestureFeedback.Volume(volumePercent)
+                            val am = context.getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
+                            val max = am.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)
+                            val cur = am.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)
+                            val new = (cur - (dragAmount.y / height * max).toInt()).coerceIn(0, max)
+                            am.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, new, 0)
+                            gestureFeedback = GestureFeedback.Volume(if (max > 0) new * 100 / max else 0)
                         }
                     }
                 }
@@ -252,266 +223,205 @@ fun PlayerScreen(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Gesture feedback overlay (centered)
+        // Gesture feedback (centered pill)
         AnimatedVisibility(
             visible = gestureFeedback != null,
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier.align(Alignment.Center)
         ) {
-            GestureFeedbackOverlay(feedback = gestureFeedback)
+            GestureFeedbackPill(feedback = gestureFeedback)
         }
 
-        // Top controls bar
+        // Top gradient + back button
         AnimatedVisibility(
-            visible = controlsVisible && !isLocked,
+            visible = controlsVisible,
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier.align(Alignment.TopCenter)
         ) {
-            TopControlBar(
-                onBack = {
-                    viewModel.saveProgress()
-                    onBack()
-                },
-                onLock = { isLocked = true }
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Black.copy(alpha = 0.6f),
+                                Color.Transparent
+                            )
+                        )
+                    )
+                    .statusBarsPadding()
+            ) {
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(8.dp)
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
         }
 
-        // Bottom controls bar
+        // Centered play/pause + skip controls
         AnimatedVisibility(
-            visible = controlsVisible && !isLocked,
+            visible = controlsVisible,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier = Modifier.align(Alignment.Center)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                IconButton(onClick = {
+                    viewModel.player.seekTo((viewModel.player.currentPosition - 15000).coerceAtLeast(0))
+                }) {
+                    Icon(
+                        Icons.Default.Replay10,
+                        contentDescription = "Rewind",
+                        tint = Color.White.copy(alpha = 0.9f),
+                        modifier = Modifier.size(36.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(24.dp))
+                IconButton(onClick = {
+                    if (viewModel.player.isPlaying) viewModel.player.pause()
+                    else viewModel.player.play()
+                }) {
+                    Icon(
+                        if (viewModel.player.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = "Play/Pause",
+                        tint = Color.White,
+                        modifier = Modifier.size(52.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(24.dp))
+                IconButton(onClick = {
+                    viewModel.player.seekTo(viewModel.player.currentPosition + 15000)
+                }) {
+                    Icon(
+                        Icons.Default.Forward10,
+                        contentDescription = "Forward",
+                        tint = Color.White.copy(alpha = 0.9f),
+                        modifier = Modifier.size(36.dp)
+                    )
+                }
+            }
+        }
+
+        // Bottom gradient + slider + time
+        AnimatedVisibility(
+            visible = controlsVisible,
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier.align(Alignment.BottomCenter)
         ) {
-            BottomControlBar(
-                currentPosition = currentPosition,
-                duration = duration,
-                sliderPosition = sliderPosition,
-                isPlaying = viewModel.player.isPlaying,
-                onSeekChanged = { position ->
-                    isSliderDragging = true
-                    sliderPosition = position
-                },
-                onSeekFinished = { position ->
-                    isSliderDragging = false
-                    val seekTo = (position * duration).toLong()
-                    viewModel.player.seekTo(seekTo)
-                    currentPosition = seekTo
-                },
-                onPlayPause = {
-                    if (viewModel.player.isPlaying) viewModel.player.pause()
-                    else viewModel.player.play()
-                },
-                onRewind = { viewModel.player.seekTo((viewModel.player.currentPosition - 10000).coerceAtLeast(0)) },
-                onForward = { viewModel.player.seekTo(viewModel.player.currentPosition + 10000) }
-            )
-        }
-
-        // Locked state: only unlock button
-        if (isLocked) {
-            IconButton(
-                onClick = { isLocked = false },
+            Column(
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(16.dp)
-                    .statusBarsPadding()
+                    .fillMaxWidth()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.7f)
+                            )
+                        )
+                    )
+                    .padding(horizontal = 24.dp)
+                    .padding(top = 40.dp, bottom = 24.dp)
             ) {
-                Icon(
-                    Icons.Default.Lock,
-                    contentDescription = "Unlock",
-                    tint = Color.White,
-                    modifier = Modifier.size(28.dp)
+                Slider(
+                    value = sliderPosition,
+                    onValueChange = {
+                        isSliderDragging = true
+                        sliderPosition = it
+                    },
+                    onValueChangeFinished = {
+                        isSliderDragging = false
+                        val seekTo = (sliderPosition * duration).toLong()
+                        viewModel.player.seekTo(seekTo)
+                        currentPosition = seekTo
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = SliderDefaults.colors(
+                        thumbColor = Color.White,
+                        activeTrackColor = Color.White,
+                        inactiveTrackColor = Color.White.copy(alpha = 0.3f)
+                    )
                 )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = formatPosition(currentPosition),
+                        color = Color.White.copy(alpha = 0.8f),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = formatPosition(duration),
+                        color = Color.White.copy(alpha = 0.5f),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
         }
     }
 }
 
-// Sealed class for gesture feedback types
 private sealed class GestureFeedback {
     data class Brightness(val percent: Int) : GestureFeedback()
     data class Volume(val percent: Int) : GestureFeedback()
     data class Seek(val seconds: Int) : GestureFeedback()
 }
 
-// Gesture feedback overlay composable
 @Composable
-private fun GestureFeedbackOverlay(feedback: GestureFeedback?) {
+private fun GestureFeedbackPill(feedback: GestureFeedback?) {
     if (feedback == null) return
-
     Box(
         modifier = Modifier
-            .size(120.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color.Black.copy(alpha = 0.7f)),
+            .clip(RoundedCornerShape(24.dp))
+            .background(Color.Black.copy(alpha = 0.6f))
+            .padding(horizontal = 24.dp, vertical = 16.dp),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            when (feedback) {
-                is GestureFeedback.Brightness -> {
-                    Text(text = "☀", fontSize = 32.sp, color = Color.White)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "${feedback.percent}%",
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-                is GestureFeedback.Volume -> {
-                    Text(text = "🔊", fontSize = 32.sp, color = Color.White)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "${feedback.percent}%",
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-                is GestureFeedback.Seek -> {
-                    Text(
-                        text = if (feedback.seconds >= 0) "⏩" else "⏪",
-                        fontSize = 32.sp,
-                        color = Color.White
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "${if (feedback.seconds >= 0) "+" else ""}${feedback.seconds}s",
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
-        }
-    }
-}
-
-// Top control bar: back + lock
-@Composable
-private fun TopControlBar(
-    onBack: () -> Unit,
-    onLock: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                Color.Black.copy(alpha = 0.5f)
-            )
-            .statusBarsPadding()
-            .padding(horizontal = 4.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        IconButton(onClick = onBack) {
-            Icon(
-                Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Back",
-                tint = Color.White,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-        IconButton(onClick = onLock) {
-            Icon(
-                Icons.Default.Lock,
-                contentDescription = "Lock",
-                tint = Color.White,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-    }
-}
-
-// Bottom control bar: time + slider + play controls
-@Composable
-private fun BottomControlBar(
-    currentPosition: Long,
-    duration: Long,
-    sliderPosition: Float,
-    isPlaying: Boolean,
-    onSeekChanged: (Float) -> Unit,
-    onSeekFinished: (Float) -> Unit,
-    onPlayPause: () -> Unit,
-    onRewind: () -> Unit,
-    onForward: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color.Black.copy(alpha = 0.5f))
-            .padding(horizontal = 16.dp)
-            .padding(bottom = 16.dp)
-    ) {
-        // Time row
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = formatPosition(currentPosition),
-                color = Color.White,
-                fontSize = 12.sp
-            )
-            Text(
-                text = formatPosition(duration),
-                color = Color.White.copy(alpha = 0.7f),
-                fontSize = 12.sp
-            )
-        }
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        // Seek slider
-        Slider(
-            value = sliderPosition,
-            onValueChange = onSeekChanged,
-            onValueChangeFinished = { onSeekFinished(sliderPosition) },
-            modifier = Modifier.fillMaxWidth(),
-            colors = SliderDefaults.colors(
-                thumbColor = Color.White,
-                activeTrackColor = Color.White,
-                inactiveTrackColor = Color.White.copy(alpha = 0.3f)
-            )
-        )
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        // Play controls row
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onRewind) {
-                Icon(
-                    Icons.Default.Replay10,
-                    contentDescription = "Rewind 10s",
-                    tint = Color.White,
-                    modifier = Modifier.size(28.dp)
+        when (feedback) {
+            is GestureFeedback.Brightness -> {
+                Text(
+                    "☀ ${feedback.percent}%",
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
-            Spacer(modifier = Modifier.width(16.dp))
-            IconButton(onClick = onPlayPause) {
-                Icon(
-                    if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = if (isPlaying) "Pause" else "Play",
-                    tint = Color.White,
-                    modifier = Modifier.size(36.dp)
+            is GestureFeedback.Volume -> {
+                Text(
+                    "🔊 ${feedback.percent}%",
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
-            Spacer(modifier = Modifier.width(16.dp))
-            IconButton(onClick = onForward) {
-                Icon(
-                    Icons.Default.Forward10,
-                    contentDescription = "Forward 10s",
-                    tint = Color.White,
-                    modifier = Modifier.size(28.dp)
+            is GestureFeedback.Seek -> {
+                val sign = if (feedback.seconds >= 0) "+" else ""
+                Text(
+                    "$sign${feedback.seconds}s",
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
         }
