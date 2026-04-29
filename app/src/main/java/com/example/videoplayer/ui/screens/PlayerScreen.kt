@@ -25,7 +25,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -58,6 +60,15 @@ fun PlayerScreen(
 
     var controlsVisible by remember { mutableStateOf(true) }
     var isLocked by remember { mutableStateOf(false) }
+    var accumulatedSeekMs by remember { mutableFloatStateOf(0f) }
+
+    // Auto-hide controls after 3 seconds
+    LaunchedEffect(controlsVisible) {
+        if (controlsVisible) {
+            kotlinx.coroutines.delay(3000)
+            controlsVisible = false
+        }
+    }
 
     // Hide system bars for immersive mode
     DisposableEffect(Unit) {
@@ -96,7 +107,6 @@ fun PlayerScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    // Save progress and release on exit
     BackHandler {
         viewModel.saveProgress()
         onBack()
@@ -114,19 +124,26 @@ fun PlayerScreen(
                 }
             }
             .pointerInput(Unit) {
-                detectDragGestures { change, dragAmount ->
+                detectDragGestures(
+                    onDragEnd = {
+                        if (abs(accumulatedSeekMs) > 0) {
+                            viewModel.player.seekTo(
+                                (viewModel.player.currentPosition + accumulatedSeekMs.toLong())
+                                    .coerceIn(0, viewModel.player.duration.coerceAtLeast(0))
+                            )
+                            accumulatedSeekMs = 0f
+                        }
+                    },
+                    onDragCancel = {
+                        accumulatedSeekMs = 0f
+                    }
+                ) { change, dragAmount ->
                     change.consume()
                     val width = size.width
                     val height = size.height
                     if (abs(dragAmount.x) > abs(dragAmount.y)) {
-                        // Horizontal: seek
-                        val seekMs = ((dragAmount.x / width) * 120_000L).toLong()
-                        viewModel.player.seekTo(
-                            (viewModel.player.currentPosition + seekMs).coerceIn(
-                                0L,
-                                viewModel.player.duration.coerceAtLeast(0L)
-                            )
-                        )
+                        // Horizontal: accumulate seek delta
+                        accumulatedSeekMs += (dragAmount.x / width) * 120_000f
                     } else {
                         if (change.position.x < width / 2) {
                             // Left vertical: brightness

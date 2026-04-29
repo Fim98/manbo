@@ -26,10 +26,13 @@ object VideoMetadataExtractor {
             thumbnailDir.mkdirs()
             val thumbnailFile = File(thumbnailDir, "$videoId.jpg")
 
-            val frame = retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
-            if (frame != null && !thumbnailFile.exists()) {
-                FileOutputStream(thumbnailFile).use { fos ->
-                    frame.compress(Bitmap.CompressFormat.JPEG, 85, fos)
+            if (!thumbnailFile.exists()) {
+                val frame = retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                if (frame != null) {
+                    FileOutputStream(thumbnailFile).use { fos ->
+                        frame.compress(Bitmap.CompressFormat.JPEG, 85, fos)
+                    }
+                    frame.recycle()
                 }
             }
 
