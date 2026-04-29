@@ -1,6 +1,8 @@
 package com.example.videoplayer.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -29,6 +31,9 @@ fun NavGraph(
     videoViewModel: VideoViewModel,
     modifier: Modifier = Modifier
 ) {
+    val videos by videoViewModel.videos.collectAsState()
+    val recentPlays by videoViewModel.recentPlays.collectAsState()
+
     NavHost(
         navController = navController,
         startDestination = Routes.VIDEO_LIST,
@@ -36,7 +41,7 @@ fun NavGraph(
     ) {
         composable(Routes.VIDEO_LIST) {
             VideoListScreen(
-                videos = videoViewModel.videos.value,
+                videos = videos,
                 onVideoClick = { videoId ->
                     navController.navigate(Routes.playerRoute(videoId))
                 },
@@ -49,8 +54,8 @@ fun NavGraph(
 
         composable(Routes.RECENT_PLAY) {
             RecentPlayScreen(
-                videos = videoViewModel.videos.value,
-                history = videoViewModel.recentPlays.value,
+                videos = videos,
+                history = recentPlays,
                 onVideoClick = { videoId ->
                     navController.navigate(Routes.playerRoute(videoId))
                 }
@@ -62,11 +67,11 @@ fun NavGraph(
             arguments = listOf(navArgument("videoId") { type = NavType.LongType })
         ) { backStackEntry ->
             val videoId = backStackEntry.arguments?.getLong("videoId") ?: return@composable
-            val video = videoViewModel.videos.value.find { it.id == videoId }
+            val video = videos.find { it.id == videoId }
 
             if (video != null) {
                 val playerViewModel: PlayerViewModel = viewModel()
-                val history = videoViewModel.recentPlays.value.find { it.videoId == videoId }
+                val history = recentPlays.find { it.videoId == videoId }
                 val startPosition = history?.position ?: 0L
 
                 PlayerScreen(
@@ -74,7 +79,6 @@ fun NavGraph(
                     onBack = { navController.popBackStack() }
                 )
 
-                // Trigger playback once
                 androidx.compose.runtime.LaunchedEffect(video.uri) {
                     playerViewModel.play(video.uri, video.id, startPosition)
                 }

@@ -2,6 +2,7 @@ package com.example.videoplayer.ui.viewmodel
 
 import android.app.Application
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -9,10 +10,12 @@ import com.example.videoplayer.data.VideoRepository
 import com.example.videoplayer.data.db.AppDatabase
 import com.example.videoplayer.data.db.VideoEntity
 import com.example.videoplayer.util.VideoMetadataExtractor
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class VideoViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -31,8 +34,14 @@ class VideoViewModel(application: Application) : AndroidViewModel(application) {
             val context = getApplication<Application>()
             for (uri in uris) {
                 try {
+                    // Persist URI permission for access across reboots
+                    val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    context.contentResolver.takePersistableUriPermission(uri, takeFlags)
+
                     val tempId = System.currentTimeMillis()
-                    val metadata = VideoMetadataExtractor.extract(context, uri, tempId)
+                    val metadata = withContext(Dispatchers.IO) {
+                        VideoMetadataExtractor.extract(context, uri, tempId)
+                    }
                     val fileName = getFileName(context, uri)
 
                     val entity = VideoEntity(
@@ -46,7 +55,9 @@ class VideoViewModel(application: Application) : AndroidViewModel(application) {
 
                     // Re-extract thumbnail with real ID if different from tempId
                     if (insertedId != tempId) {
-                        val finalMetadata = VideoMetadataExtractor.extract(context, uri, insertedId)
+                        val finalMetadata = withContext(Dispatchers.IO) {
+                            VideoMetadataExtractor.extract(context, uri, insertedId)
+                        }
                         repository.deleteVideo(entity)
                         repository.insertVideo(
                             entity.copy(
