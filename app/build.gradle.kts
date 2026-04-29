@@ -13,6 +13,10 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
+val versionNameStr: String = System.getenv("VERSION_NAME") ?: "1.0"
+val versionParts = versionNameStr.split(".")
+val versionCodeVal: Int = versionParts[0].toInt() * 100 + (versionParts.getOrNull(1)?.toInt() ?: 0)
+
 android {
     namespace = "com.manbo.videoplayer"
     compileSdk {
@@ -25,8 +29,8 @@ android {
         applicationId = "com.manbo.videoplayer"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = versionCodeVal
+        versionName = versionNameStr
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

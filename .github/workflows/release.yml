@@ -58,12 +58,17 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build Release APK
-        run: ./gradlew assembleRelease
-
       - name: Get tag name
         id: tag
         run: echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Set version from tag
+        run: echo "VERSION_NAME=${TAG_NAME#v}" >> $GITHUB_ENV
+        env:
+          TAG_NAME: ${{ steps.tag.outputs.TAG_NAME }}
+
+      - name: Build Release APK
+        run: ./gradlew assembleRelease
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
