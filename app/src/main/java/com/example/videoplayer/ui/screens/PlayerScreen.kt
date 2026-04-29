@@ -2,13 +2,34 @@ package com.example.videoplayer.ui.screens
 
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -21,6 +42,8 @@ import tv.danmaku.ijk.media.exo2.Exo2PlayerManager
 import com.shuyu.gsyvideoplayer.utils.GSYVideoType
 import com.shuyu.gsyvideoplayer.video.StandardGSYVideoPlayer
 
+private val SPEED_OPTIONS = listOf(1f, 1.5f, 2f)
+
 @Composable
 fun PlayerScreen(
     viewModel: PlayerViewModel,
@@ -32,6 +55,9 @@ fun PlayerScreen(
     val context = LocalContext.current
     val activity = context as? android.app.Activity
     val lifecycleOwner = LocalLifecycleOwner.current
+
+    var currentSpeed by remember { mutableStateOf(1f) }
+    var speedMenuExpanded by remember { mutableStateOf(false) }
 
     val gsyPlayer = remember {
         PlayerFactory.setPlayManager(Exo2PlayerManager::class.java)
@@ -106,5 +132,52 @@ fun PlayerScreen(
             factory = { gsyPlayer },
             modifier = Modifier.fillMaxSize()
         )
+
+        // Speed control button (top-right, above GSY's controls)
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .statusBarsPadding()
+                .padding(top = 48.dp, end = 16.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .clickable { speedMenuExpanded = true }
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    text = "${currentSpeed}x",
+                    color = Color.White,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            DropdownMenu(
+                expanded = speedMenuExpanded,
+                onDismissRequest = { speedMenuExpanded = false },
+                modifier = Modifier.background(Color.Black.copy(alpha = 0.85f))
+            ) {
+                SPEED_OPTIONS.forEach { speed ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = if (speed == currentSpeed) "${speed}x  ✓" else "${speed}x",
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = if (speed == currentSpeed) FontWeight.Bold else FontWeight.Normal
+                            )
+                        },
+                        onClick = {
+                            currentSpeed = speed
+                            speedMenuExpanded = false
+                            gsyPlayer.setSpeed(speed, true)
+                        }
+                    )
+                }
+            }
+        }
     }
 }
