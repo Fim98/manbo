@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -20,8 +23,21 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
+      - name: Validate signing secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          [ -n "${{ secrets.KEYSTORE_BASE64 }}" ] || { echo "Missing KEYSTORE_BASE64"; exit 1; }
+          [ -n "${{ secrets.STORE_PASSWORD }}" ] || { echo "Missing STORE_PASSWORD"; exit 1; }
+          [ -n "${{ secrets.KEY_PASSWORD }}" ] || { echo "Missing KEY_PASSWORD"; exit 1; }
+          [ -n "${{ secrets.KEY_ALIAS }}" ] || { echo "Missing KEY_ALIAS"; exit 1; }
+
       - name: Decode Keystore
-        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/manbo-release.jks
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > app/manbo-release.jks
+          test -s app/manbo-release.jks
 
       - name: Create keystore.properties
         run: |
@@ -29,6 +45,15 @@ jobs:
           echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> keystore.properties
           echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> keystore.properties
           echo "storeFile=../app/manbo-release.jks" >> keystore.properties
+
+      - name: Verify keystore
+        shell: bash
+        run: |
+          set -euo pipefail
+          keytool -list -v \
+            -keystore app/manbo-release.jks \
+            -storepass "${{ secrets.STORE_PASSWORD }}" \
+            -alias "${{ secrets.KEY_ALIAS }}"
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
