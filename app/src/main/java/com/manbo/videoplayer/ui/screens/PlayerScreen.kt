@@ -103,17 +103,27 @@ fun PlayerScreen(
         }
     }
 
-    // Set up video and start playing
-    DisposableEffect(videoUri) {
+    DisposableEffect(activity, isLandscape) {
         activity?.let { act ->
             val window = act.window
             val controller = WindowInsetsControllerCompat(window, window.decorView)
-            controller.hide(WindowInsetsCompat.Type.systemBars())
-            controller.systemBarsBehavior =
-                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            act.setPlayerCutoutEnabled(true)
+            if (isLandscape) {
+                controller.hide(WindowInsetsCompat.Type.systemBars())
+                controller.systemBarsBehavior =
+                    WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            } else {
+                controller.show(WindowInsetsCompat.Type.systemBars())
+            }
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             act.isPlayerActive = true
         }
+
+        onDispose { }
+    }
+
+    // Set up video and start playing
+    DisposableEffect(videoUri) {
 
         gsyPlayer.setUp(videoUri, true, null)
         if (startPosition > 0) {
@@ -134,6 +144,7 @@ fun PlayerScreen(
 
             activity?.let { act ->
                 act.isPlayerActive = false
+                act.setPlayerCutoutEnabled(false)
                 act.exitPlayerLandscapeFullscreen()
                 val window = act.window
                 val controller = WindowInsetsControllerCompat(window, window.decorView)

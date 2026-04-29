@@ -20,7 +20,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        applyPlayerCutoutMode(enabled = false)
+        setPlayerCutoutEnabled(enabled = false)
         setContent {
             VideoplayerTheme {
                 VideoplayerApp()
@@ -46,16 +46,18 @@ class MainActivity : ComponentActivity() {
 
     fun enterPlayerLandscapeFullscreen() {
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-        applyPlayerCutoutMode(enabled = true)
     }
 
     fun exitPlayerLandscapeFullscreen() {
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-        applyPlayerCutoutMode(enabled = false)
     }
 
     fun isPlayerLandscapeFullscreen(): Boolean {
         return resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    }
+
+    fun setPlayerCutoutEnabled(enabled: Boolean) {
+        applyPlayerCutoutMode(enabled = enabled)
     }
 
     override fun onPictureInPictureModeChanged(
