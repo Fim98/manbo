@@ -81,6 +81,8 @@ fun PlayerScreen(
             setIsTouchWiget(true)
             setIsTouchWigetFull(true)
 
+            backButton.visibility = android.view.View.GONE
+
             fullscreenButton.setOnClickListener {
                 activity?.let { act ->
                     if (act.isPlayerLandscapeFullscreen()) {
@@ -90,16 +92,7 @@ fun PlayerScreen(
                     }
                 }
             }
-            backButton.setOnClickListener {
-                activity?.let { act ->
-                    if (act.isPlayerLandscapeFullscreen()) {
-                        act.exitPlayerLandscapeFullscreen()
-                        return@setOnClickListener
-                    }
-                }
-                viewModel.saveProgress(currentPlayer.currentPositionWhenPlaying)
-                onBack()
-            }
+
         }
     }
 
@@ -195,12 +188,8 @@ fun PlayerScreen(
             activity.exitPlayerLandscapeFullscreen()
             return@BackHandler
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && activity?.isPlayerActive == true) {
-            activity.enterPipMode()
-        } else {
-            viewModel.saveProgress(gsyPlayer.currentPlayer.currentPositionWhenPlaying)
-            onBack()
-        }
+        viewModel.saveProgress(gsyPlayer.currentPlayer.currentPositionWhenPlaying)
+        onBack()
     }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -265,7 +254,7 @@ fun PlayerScreen(
         if (!isPipMode && isLandscape) {
             Row(
                 modifier = Modifier
-                    .align(Alignment.CenterStart)
+                    .align(Alignment.CenterEnd)
                     .statusBarsPadding()
                     .navigationBarsPadding()
                     .padding(horizontal = 8.dp),
