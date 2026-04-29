@@ -116,21 +116,23 @@ fun PlayerScreen(
         }
     }
 
-    // Lifecycle pause/resume
+    // Lifecycle pause/resume + PiP state tracking
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_PAUSE -> {
                     val inPip = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N &&
                             activity?.isInPictureInPictureMode == true
+                    isPipMode = inPip
                     if (!inPip) {
                         gsyPlayer.onVideoPause()
                     }
                 }
                 Lifecycle.Event.ON_RESUME -> {
-                    isPipMode = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N &&
+                    val inPip = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N &&
                             activity?.isInPictureInPictureMode == true
-                    if (!isPipMode) {
+                    isPipMode = inPip
+                    if (!inPip) {
                         gsyPlayer.onVideoResume()
                     }
                 }
