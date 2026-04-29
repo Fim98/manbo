@@ -2,7 +2,6 @@ package com.example.videoplayer.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -76,7 +75,8 @@ fun NavGraph(
                 val history = recentPlays.find { it.videoId == videoId }
                 val startPosition = history?.position ?: 0L
 
-                // Stop player when leaving this composable
+                playerViewModel.setCurrentVideo(video.id)
+
                 DisposableEffect(Unit) {
                     onDispose {
                         playerViewModel.stop()
@@ -85,15 +85,10 @@ fun NavGraph(
 
                 PlayerScreen(
                     viewModel = playerViewModel,
-                    onBack = {
-                        playerViewModel.saveProgress()
-                        navController.popBackStack()
-                    }
+                    videoUri = video.uri,
+                    startPosition = startPosition,
+                    onBack = { navController.popBackStack() }
                 )
-
-                LaunchedEffect(video.uri) {
-                    playerViewModel.play(video.uri, video.id, startPosition)
-                }
             }
         }
     }
