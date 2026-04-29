@@ -1,10 +1,27 @@
-# Manbo 曼播 🐱
+<p align="center">
+  <img src="docs/images/ic_launcher.png" alt="曼播 Logo" width="120" />
+</p>
 
-> 一个简单可爱的本地视频播放器喵～
+<h1 align="center">Manbo 曼播 🐱</h1>
+
+<p align="center">
+  <strong>一个简单可爱的本地视频播放器喵～</strong>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Platform-Android%207.0%2B-brightgreen?logo=android" alt="Platform" />
+  <img src="https://img.shields.io/badge/Kotlin-1.x-blue?logo=kotlin" alt="Kotlin" />
+  <img src="https://img.shields.io/badge/UI-Jetpack%20Compose-4285F4?logo=android" alt="Compose" />
+  <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License" />
+</p>
 
 ## 简介
 
-Manbo（曼播）是一个 Android 本地视频播放器，用最简洁的设计给你最舒适的观影体验喵～ ✨
+曼播是一个 Android 本地视频播放器，用最简洁的设计给你最舒适的观影体验喵～ ✨
+
+<p align="center">
+  <img src="docs/images/splash_icon.png" alt="曼播" width="200" />
+</p>
 
 ## 功能特性
 
@@ -84,4 +101,6 @@ MIT
 
 ---
 
-慢慢看，慢慢播，生活就该慢慢来喵～ 🐾
+<p align="center">
+  慢慢看，慢慢播，生活就该慢慢来喵～ 🐾
+</p>
