@@ -16,6 +16,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.videoplayer.ui.viewmodel.PlayerViewModel
+import com.shuyu.gsyvideoplayer.player.PlayerFactory
+import tv.danmaku.ijk.media.exo2.Exo2PlayerManager
 import com.shuyu.gsyvideoplayer.utils.GSYVideoType
 import com.shuyu.gsyvideoplayer.video.StandardGSYVideoPlayer
 
@@ -32,6 +34,7 @@ fun PlayerScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
 
     val gsyPlayer = remember {
+        PlayerFactory.setPlayManager(Exo2PlayerManager::class.java)
         StandardGSYVideoPlayer(context).apply {
             GSYVideoType.setShowType(GSYVideoType.SCREEN_TYPE_FULL)
             GSYVideoType.setRenderType(GSYVideoType.TEXTURE)

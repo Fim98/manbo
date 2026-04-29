@@ -3,7 +3,18 @@
     "allow": [
       "Bash(./gradlew :app:compileDebugKotlin)",
       "Bash(git init *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git *)",
+      "Bash(./gradlew :app:assembleDebug *)",
+      "Bash(jar tf *)",
+      "mcp__web-search-prime__web_search_prime",
+      "mcp__web-reader__webReader",
+      "Bash(javap -p java_aar/classes.jar\\\\!/com/shuyu/gsyvideoplayer/video/base/GSYBaseVideoPlayer.class)",
+      "Bash(jar xf *)",
+      "Bash(javap -p com/shuyu/gsyvideoplayer/video/base/GSYBaseVideoPlayer.class)",
+      "Bash(javap com.shuyu.gsyvideoplayer.video.base.GSYVideoControlView)",
+      "Bash(javap com.shuyu.gsyvideoplayer.video.base.GSYVideoView)"
     ]
   }
 }
