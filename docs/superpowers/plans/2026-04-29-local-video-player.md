@@ -34,7 +34,7 @@
 | Create | `app/src/main/java/.../ui/navigation/NavGraph.kt` | Navigation routes and NavHost setup |
 | Create | `app/src/main/java/.../VideoplayerApp.kt` | Root composable: NavHost + bottom NavigationBar |
 
-Base package: `com.example.videoplayer` (path: `app/src/main/java/com/example/videoplayer/`)
+Base package: `com.manbo.videoplayer` (path: `app/src/main/java/com/example/videoplayer/`)
 
 ---
 
@@ -88,7 +88,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.videoplayer"
+    namespace = "com.manbo.videoplayer"
     compileSdk {
         version = release(36) {
             minorApiLevel = 1
@@ -96,7 +96,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.videoplayer"
+        applicationId = "com.manbo.videoplayer"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
@@ -175,7 +175,7 @@ git commit -m "chore: add Media3, Room, Navigation, Coil dependencies"
 - [ ] **Step 1: Create `VideoEntity.kt`**
 
 ```kotlin
-package com.example.videoplayer.data.db
+package com.manbo.videoplayer.data.db
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
@@ -194,7 +194,7 @@ data class VideoEntity(
 - [ ] **Step 2: Create `PlayHistoryEntity.kt`**
 
 ```kotlin
-package com.example.videoplayer.data.db
+package com.manbo.videoplayer.data.db
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
@@ -219,7 +219,7 @@ data class PlayHistoryEntity(
 - [ ] **Step 3: Create `VideoDao.kt`**
 
 ```kotlin
-package com.example.videoplayer.data.db
+package com.manbo.videoplayer.data.db
 
 import androidx.room.Dao
 import androidx.room.Delete
@@ -263,7 +263,7 @@ interface VideoDao {
 - [ ] **Step 4: Create `AppDatabase.kt`**
 
 ```kotlin
-package com.example.videoplayer.data.db
+package com.manbo.videoplayer.data.db
 
 import android.content.Context
 import androidx.room.Database
@@ -319,12 +319,12 @@ git commit -m "feat: add Room database layer with VideoEntity, PlayHistoryEntity
 - [ ] **Step 1: Create `VideoRepository.kt`**
 
 ```kotlin
-package com.example.videoplayer.data
+package com.manbo.videoplayer.data
 
-import com.example.videoplayer.data.db.AppDatabase
-import com.example.videoplayer.data.db.PlayHistoryEntity
-import com.example.videoplayer.data.db.VideoDao
-import com.example.videoplayer.data.db.VideoEntity
+import com.manbo.videoplayer.data.db.AppDatabase
+import com.manbo.videoplayer.data.db.PlayHistoryEntity
+import com.manbo.videoplayer.data.db.VideoDao
+import com.manbo.videoplayer.data.db.VideoEntity
 import kotlinx.coroutines.flow.Flow
 
 class VideoRepository(private val dao: VideoDao) {
@@ -388,7 +388,7 @@ git commit -m "feat: add VideoRepository wrapping Room DAO"
 - [ ] **Step 1: Create `VideoMetadataExtractor.kt`**
 
 ```kotlin
-package com.example.videoplayer.util
+package com.manbo.videoplayer.util
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -456,17 +456,17 @@ git commit -m "feat: add VideoMetadataExtractor for duration and thumbnail extra
 - [ ] **Step 1: Create `VideoViewModel.kt`**
 
 ```kotlin
-package com.example.videoplayer.ui.viewmodel
+package com.manbo.videoplayer.ui.viewmodel
 
 import android.app.Application
 import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.videoplayer.data.VideoRepository
-import com.example.videoplayer.data.db.AppDatabase
-import com.example.videoplayer.data.db.VideoEntity
-import com.example.videoplayer.util.VideoMetadataExtractor
+import com.manbo.videoplayer.data.VideoRepository
+import com.manbo.videoplayer.data.db.AppDatabase
+import com.manbo.videoplayer.data.db.VideoEntity
+import com.manbo.videoplayer.util.VideoMetadataExtractor
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -561,7 +561,7 @@ git commit -m "feat: add VideoViewModel for video list state and import/delete o
 - [ ] **Step 1: Create `PlayerViewModel.kt`**
 
 ```kotlin
-package com.example.videoplayer.ui.viewmodel
+package com.manbo.videoplayer.ui.viewmodel
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
@@ -569,8 +569,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
-import com.example.videoplayer.data.VideoRepository
-import com.example.videoplayer.data.db.AppDatabase
+import com.manbo.videoplayer.data.VideoRepository
+import com.manbo.videoplayer.data.db.AppDatabase
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -652,7 +652,7 @@ git commit -m "feat: add PlayerViewModel for ExoPlayer lifecycle and progress sa
 - [ ] **Step 1: Create `VideoCard.kt`**
 
 ```kotlin
-package com.example.videoplayer.ui.components
+package com.manbo.videoplayer.ui.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -751,7 +751,7 @@ private fun formatDuration(ms: Long): String {
 - [ ] **Step 2: Create `RecentPlayItem.kt`**
 
 ```kotlin
-package com.example.videoplayer.ui.components
+package com.manbo.videoplayer.ui.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -872,7 +872,7 @@ git commit -m "feat: add VideoCard and RecentPlayItem UI components"
 - [ ] **Step 1: Create `VideoListScreen.kt`**
 
 ```kotlin
-package com.example.videoplayer.ui.screens
+package com.manbo.videoplayer.ui.screens
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -895,8 +895,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.example.videoplayer.data.db.VideoEntity
-import com.example.videoplayer.ui.components.VideoCard
+import com.manbo.videoplayer.data.db.VideoEntity
+import com.manbo.videoplayer.ui.components.VideoCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -987,7 +987,7 @@ git commit -m "feat: add VideoListScreen with grid layout and import button"
 - [ ] **Step 1: Create `RecentPlayScreen.kt`**
 
 ```kotlin
-package com.example.videoplayer.ui.screens
+package com.manbo.videoplayer.ui.screens
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -1002,9 +1002,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.example.videoplayer.data.db.PlayHistoryEntity
-import com.example.videoplayer.data.db.VideoEntity
-import com.example.videoplayer.ui.components.RecentPlayItem
+import com.manbo.videoplayer.data.db.PlayHistoryEntity
+import com.manbo.videoplayer.data.db.VideoEntity
+import com.manbo.videoplayer.ui.components.RecentPlayItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1078,7 +1078,7 @@ git commit -m "feat: add RecentPlayScreen with list layout and progress display"
 - [ ] **Step 1: Create `PlayerScreen.kt`**
 
 ```kotlin
-package com.example.videoplayer.ui.screens
+package com.manbo.videoplayer.ui.screens
 
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
@@ -1125,7 +1125,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.media3.ui.PlayerView
-import com.example.videoplayer.ui.viewmodel.PlayerViewModel
+import com.manbo.videoplayer.ui.viewmodel.PlayerViewModel
 import java.util.Locale
 import kotlin.math.abs
 
@@ -1384,7 +1384,7 @@ git commit -m "feat: add fullscreen PlayerScreen with gestures and immersive mod
 - [ ] **Step 1: Create `NavGraph.kt`**
 
 ```kotlin
-package com.example.videoplayer.ui.navigation
+package com.manbo.videoplayer.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -1394,12 +1394,12 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import com.example.videoplayer.data.db.VideoEntity
-import com.example.videoplayer.ui.screens.PlayerScreen
-import com.example.videoplayer.ui.screens.RecentPlayScreen
-import com.example.videoplayer.ui.screens.VideoListScreen
-import com.example.videoplayer.ui.viewmodel.PlayerViewModel
-import com.example.videoplayer.ui.viewmodel.VideoViewModel
+import com.manbo.videoplayer.data.db.VideoEntity
+import com.manbo.videoplayer.ui.screens.PlayerScreen
+import com.manbo.videoplayer.ui.screens.RecentPlayScreen
+import com.manbo.videoplayer.ui.screens.VideoListScreen
+import com.manbo.videoplayer.ui.viewmodel.PlayerViewModel
+import com.manbo.videoplayer.ui.viewmodel.VideoViewModel
 
 object Routes {
     const val VIDEO_LIST = "videoList"
@@ -1493,7 +1493,7 @@ git commit -m "feat: add NavGraph with video list, recent plays, and player rout
 - [ ] **Step 1: Create `VideoplayerApp.kt`**
 
 ```kotlin
-package com.example.videoplayer
+package com.manbo.videoplayer
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -1513,9 +1513,9 @@ import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.videoplayer.ui.navigation.NavGraph
-import com.example.videoplayer.ui.navigation.Routes
-import com.example.videoplayer.ui.viewmodel.VideoViewModel
+import com.manbo.videoplayer.ui.navigation.NavGraph
+import com.manbo.videoplayer.ui.navigation.Routes
+import com.manbo.videoplayer.ui.viewmodel.VideoViewModel
 
 data class TabItem(
     val route: String,
@@ -1576,13 +1576,13 @@ fun VideoplayerApp() {
 Replace the entire file with:
 
 ```kotlin
-package com.example.videoplayer
+package com.manbo.videoplayer
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import com.example.videoplayer.ui.theme.VideoplayerTheme
+import com.manbo.videoplayer.ui.theme.VideoplayerTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

@@ -1,10 +1,12 @@
 package com.manbo.videoplayer
 
 import android.app.PictureInPictureParams
+import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import android.util.Rational
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -18,6 +20,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        applyPlayerCutoutMode(enabled = false)
         setContent {
             VideoplayerTheme {
                 VideoplayerApp()
@@ -41,6 +44,20 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    fun enterPlayerLandscapeFullscreen() {
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        applyPlayerCutoutMode(enabled = true)
+    }
+
+    fun exitPlayerLandscapeFullscreen() {
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        applyPlayerCutoutMode(enabled = false)
+    }
+
+    fun isPlayerLandscapeFullscreen(): Boolean {
+        return resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    }
+
     override fun onPictureInPictureModeChanged(
         isInPictureInPictureMode: Boolean,
         newConfig: Configuration
@@ -48,6 +65,21 @@ class MainActivity : ComponentActivity() {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
         if (!isInPictureInPictureMode) {
             isPlayerActive = false
+        }
+    }
+
+    private fun applyPlayerCutoutMode(enabled: Boolean) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+            return
+        }
+
+        window.attributes = window.attributes.apply {
+            layoutInDisplayCutoutMode = when {
+                !enabled -> WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.R ->
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+                else -> WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
         }
     }
 }

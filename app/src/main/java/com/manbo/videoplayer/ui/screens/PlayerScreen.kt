@@ -1,19 +1,26 @@
 package com.manbo.videoplayer.ui.screens
 
+import android.content.res.Configuration
 import android.os.Build
-import android.util.Rational
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -21,11 +28,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -55,10 +64,13 @@ fun PlayerScreen(
     val context = LocalContext.current
     val activity = context as? MainActivity
     val lifecycleOwner = LocalLifecycleOwner.current
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     var currentSpeed by remember { mutableStateOf(1f) }
     var speedMenuExpanded by remember { mutableStateOf(false) }
     var isPipMode by remember { mutableStateOf(false) }
+    var isControlsLocked by remember { mutableStateOf(false) }
 
     val gsyPlayer = remember {
         PlayerFactory.setPlayManager(Exo2PlayerManager::class.java)
@@ -66,11 +78,25 @@ fun PlayerScreen(
             GSYVideoType.setShowType(GSYVideoType.SCREEN_TYPE_DEFAULT)
             GSYVideoType.setRenderType(GSYVideoType.TEXTURE)
             isIfCurrentIsFullscreen = true
+            setIsTouchWiget(true)
+            setIsTouchWigetFull(true)
 
             fullscreenButton.setOnClickListener {
-                // Already fullscreen, do nothing
+                activity?.let { act ->
+                    if (act.isPlayerLandscapeFullscreen()) {
+                        act.exitPlayerLandscapeFullscreen()
+                    } else {
+                        act.enterPlayerLandscapeFullscreen()
+                    }
+                }
             }
             backButton.setOnClickListener {
+                activity?.let { act ->
+                    if (act.isPlayerLandscapeFullscreen()) {
+                        act.exitPlayerLandscapeFullscreen()
+                        return@setOnClickListener
+                    }
+                }
                 viewModel.saveProgress(currentPlayer.currentPositionWhenPlaying)
                 onBack()
             }
@@ -108,12 +134,22 @@ fun PlayerScreen(
 
             activity?.let { act ->
                 act.isPlayerActive = false
+                act.exitPlayerLandscapeFullscreen()
                 val window = act.window
                 val controller = WindowInsetsControllerCompat(window, window.decorView)
                 controller.show(WindowInsetsCompat.Type.systemBars())
                 window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             }
         }
+    }
+
+    DisposableEffect(isLandscape) {
+        gsyPlayer.isIfCurrentIsFullscreen = isLandscape
+        if (!isLandscape) {
+            isControlsLocked = false
+            speedMenuExpanded = false
+        }
+        onDispose { }
     }
 
     // Lifecycle pause/resume + PiP state tracking
@@ -144,6 +180,10 @@ fun PlayerScreen(
     }
 
     BackHandler {
+        if (activity?.isPlayerLandscapeFullscreen() == true) {
+            activity.exitPlayerLandscapeFullscreen()
+            return@BackHandler
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && activity?.isPlayerActive == true) {
             activity.enterPipMode()
         } else {
@@ -155,17 +195,19 @@ fun PlayerScreen(
     Box(modifier = modifier.fillMaxSize()) {
         AndroidView(
             factory = { gsyPlayer },
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInteropFilter { isControlsLocked }
         )
 
         // Hide overlays in PiP mode
-        if (!isPipMode) {
+        if (!isPipMode && !isControlsLocked) {
             // Speed control (top-right)
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .statusBarsPadding()
-                    .padding(top = 48.dp, end = 16.dp)
+                    .padding(top = if (isLandscape) 16.dp else 48.dp, end = 16.dp)
             ) {
                 // Speed button
                 Box(
@@ -205,6 +247,35 @@ fun PlayerScreen(
                             }
                         )
                     }
+                }
+            }
+        }
+
+        if (!isPipMode && isLandscape) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                IconButton(
+                    onClick = {
+                        isControlsLocked = !isControlsLocked
+                        if (isControlsLocked) {
+                            speedMenuExpanded = false
+                        }
+                    },
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Color.Black.copy(alpha = 0.5f))
+                ) {
+                    Icon(
+                        imageVector = if (isControlsLocked) Icons.Default.Lock else Icons.Default.LockOpen,
+                        contentDescription = if (isControlsLocked) "Unlock controls" else "Lock controls",
+                        tint = Color.White
+                    )
                 }
             }
         }

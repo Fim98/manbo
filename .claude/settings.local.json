@@ -14,7 +14,12 @@
       "Bash(jar xf *)",
       "Bash(javap -p com/shuyu/gsyvideoplayer/video/base/GSYBaseVideoPlayer.class)",
       "Bash(javap com.shuyu.gsyvideoplayer.video.base.GSYVideoControlView)",
-      "Bash(javap com.shuyu.gsyvideoplayer.video.base.GSYVideoView)"
+      "Bash(javap com.shuyu.gsyvideoplayer.video.base.GSYVideoView)",
+      "Read(//Users/fim98/Downloads/**)",
+      "Bash(identify ~/Downloads/videoplayer.png)",
+      "Bash(sips -g all ~/Downloads/videoplayer.png)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(adb uninstall *)"
     ]
   }
 }
