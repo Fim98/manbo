@@ -1,16 +1,15 @@
 package com.example.videoplayer.ui.screens
 
+import android.os.Build
+import android.util.Rational
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
@@ -36,11 +35,12 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.example.videoplayer.MainActivity
 import com.example.videoplayer.ui.viewmodel.PlayerViewModel
 import com.shuyu.gsyvideoplayer.player.PlayerFactory
+import com.shuyu.gsyvideoplayer.video.StandardGSYVideoPlayer
 import tv.danmaku.ijk.media.exo2.Exo2PlayerManager
 import com.shuyu.gsyvideoplayer.utils.GSYVideoType
-import com.shuyu.gsyvideoplayer.video.StandardGSYVideoPlayer
 
 private val SPEED_OPTIONS = listOf(1f, 1.5f, 2f)
 
@@ -53,11 +53,12 @@ fun PlayerScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val activity = context as? android.app.Activity
+    val activity = context as? MainActivity
     val lifecycleOwner = LocalLifecycleOwner.current
 
     var currentSpeed by remember { mutableStateOf(1f) }
     var speedMenuExpanded by remember { mutableStateOf(false) }
+    var isPipMode by remember { mutableStateOf(false) }
 
     val gsyPlayer = remember {
         PlayerFactory.setPlayManager(Exo2PlayerManager::class.java)
@@ -85,6 +86,7 @@ fun PlayerScreen(
             controller.systemBarsBehavior =
                 WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            act.isPlayerActive = true
         }
 
         gsyPlayer.setUp(videoUri, true, null)
@@ -94,13 +96,18 @@ fun PlayerScreen(
         gsyPlayer.startPlayLogic()
         viewModel.startProgressSaver { gsyPlayer.currentPlayer.currentPositionWhenPlaying }
 
+        // Detect PiP mode changes via activity config changes
+        val callback = Runnable { isPipMode = activity?.isInPictureInPictureMode == true }
+
         onDispose {
+            callback.run()
             viewModel.stop()
             viewModel.saveProgress(gsyPlayer.currentPlayer.currentPositionWhenPlaying)
             gsyPlayer.onVideoReset()
             gsyPlayer.release()
 
             activity?.let { act ->
+                act.isPlayerActive = false
                 val window = act.window
                 val controller = WindowInsetsControllerCompat(window, window.decorView)
                 controller.show(WindowInsetsCompat.Type.systemBars())
@@ -113,8 +120,20 @@ fun PlayerScreen(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_PAUSE -> gsyPlayer.onVideoPause()
-                Lifecycle.Event.ON_RESUME -> gsyPlayer.onVideoResume()
+                Lifecycle.Event.ON_PAUSE -> {
+                    val inPip = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N &&
+                            activity?.isInPictureInPictureMode == true
+                    if (!inPip) {
+                        gsyPlayer.onVideoPause()
+                    }
+                }
+                Lifecycle.Event.ON_RESUME -> {
+                    isPipMode = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N &&
+                            activity?.isInPictureInPictureMode == true
+                    if (!isPipMode) {
+                        gsyPlayer.onVideoResume()
+                    }
+                }
                 else -> {}
             }
         }
@@ -123,8 +142,12 @@ fun PlayerScreen(
     }
 
     BackHandler {
-        viewModel.saveProgress(gsyPlayer.currentPlayer.currentPositionWhenPlaying)
-        onBack()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && activity?.isPlayerActive == true) {
+            activity.enterPipMode()
+        } else {
+            viewModel.saveProgress(gsyPlayer.currentPlayer.currentPositionWhenPlaying)
+            onBack()
+        }
     }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -133,49 +156,73 @@ fun PlayerScreen(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Speed control button (top-right, above GSY's controls)
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .statusBarsPadding()
-                .padding(top = 48.dp, end = 16.dp)
-        ) {
+        // Hide overlays in PiP mode
+        if (!isPipMode) {
+            // Speed + PiP controls (top-right)
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(Color.Black.copy(alpha = 0.5f))
-                    .clickable { speedMenuExpanded = true }
-                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(top = 48.dp, end = 16.dp)
             ) {
-                Text(
-                    text = "${currentSpeed}x",
-                    color = Color.White,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-
-            DropdownMenu(
-                expanded = speedMenuExpanded,
-                onDismissRequest = { speedMenuExpanded = false },
-                modifier = Modifier.background(Color.Black.copy(alpha = 0.85f))
-            ) {
-                SPEED_OPTIONS.forEach { speed ->
-                    DropdownMenuItem(
-                        text = {
+                Row {
+                    // PiP button
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(Color.Black.copy(alpha = 0.5f))
+                                .clickable { activity?.enterPipMode() }
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
                             Text(
-                                text = if (speed == currentSpeed) "${speed}x  ✓" else "${speed}x",
+                                text = "PiP",
                                 color = Color.White,
-                                fontSize = 14.sp,
-                                fontWeight = if (speed == currentSpeed) FontWeight.Bold else FontWeight.Normal
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium
                             )
-                        },
-                        onClick = {
-                            currentSpeed = speed
-                            speedMenuExpanded = false
-                            gsyPlayer.setSpeed(speed, true)
                         }
-                    )
+                    }
+
+                    // Speed button
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Color.Black.copy(alpha = 0.5f))
+                            .clickable { speedMenuExpanded = true }
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = "${currentSpeed}x",
+                            color = Color.White,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+
+                DropdownMenu(
+                    expanded = speedMenuExpanded,
+                    onDismissRequest = { speedMenuExpanded = false },
+                    modifier = Modifier.background(Color.Black.copy(alpha = 0.85f))
+                ) {
+                    SPEED_OPTIONS.forEach { speed ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = if (speed == currentSpeed) "${speed}x  ✓" else "${speed}x",
+                                    color = Color.White,
+                                    fontSize = 14.sp,
+                                    fontWeight = if (speed == currentSpeed) FontWeight.Bold else FontWeight.Normal
+                                )
+                            },
+                            onClick = {
+                                currentSpeed = speed
+                                speedMenuExpanded = false
+                                gsyPlayer.setSpeed(speed, true)
+                            }
+                        )
+                    }
                 }
             }
         }
