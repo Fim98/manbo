@@ -36,7 +36,7 @@ fun PlayerScreen(
     val gsyPlayer = remember {
         PlayerFactory.setPlayManager(Exo2PlayerManager::class.java)
         StandardGSYVideoPlayer(context).apply {
-            GSYVideoType.setShowType(GSYVideoType.SCREEN_TYPE_FULL)
+            GSYVideoType.setShowType(GSYVideoType.SCREEN_TYPE_DEFAULT)
             GSYVideoType.setRenderType(GSYVideoType.TEXTURE)
             isIfCurrentIsFullscreen = true
 
